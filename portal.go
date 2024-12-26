@@ -1461,9 +1461,39 @@ func (portal *Portal) sendMessage(intent *appservice.IntentAPI, eventType event.
 	}
 }
 
+func (portal *Portal) HandleEmojiMessage(source *User, message skype.Resource) {
+	fmt.Println("portal HandleEmojiMessage")
+
+	intent := portal.getMessageIntentSkype(source, message)
+	if intent == nil {
+		fmt.Println("portal HandleEmojiMessage0: ", intent)
+		return
+	}
+
+	msg := source.bridge.DB.Message.GetByID(message.Id)
+	for _, reaction := range message.Properties.Emotions {
+		// translate emoji
+		if emoji, ok := emojimap[reaction.Key]; ok {
+			for _, user := range reaction.Users {
+				content := &event.MessageEventContent{ }
+				inRelateTo := &event.RelatesTo{
+					Type:    event.RelAnnotation,
+					EventID: msg.MXID,
+					Key:     emoji,
+				}
+				content.SetRelatesTo(inRelateTo)
+
+				portal.trySendMessage(intent, event.EventReaction, content, source, message)
+			}
+		}
+	}
+}
+
 func (portal *Portal) HandleTextMessage(source *User, message skype.Resource) {
 	if message.ClientMessageId == "" && message.Content == "" && len(message.SkypeEditedId) > 0 {
 		portal.HandleMessageRevokeSkype(source, message)
+	} else if len(message.Properties.Emotions) > 0 {
+		portal.HandleEmojiMessage(source, message)
 	} else {
 		intent, endHandlePrivateChatFromMe := portal.startHandlingSkype(source, message)
 		if endHandlePrivateChatFromMe != nil {
