@@ -1465,6 +1465,11 @@ func (portal *Portal) HandleEmojiMessage(source *User, message skype.Resource) {
 	fmt.Println("portal HandleEmojiMessage")
 
 	msg := source.bridge.DB.Message.GetByID(message.Id)
+	if msg == nil {
+		fmt.Println("portal HandleEmojiMessage 0: message not found", message.Id)
+		return
+	}
+	current_reactions := source.bridge.DB.Reaction.GetForMID(message.Id)
 	for _, reaction := range message.Properties.Emotions {
 		// translate emoji
 		if emoji, ok := emojimap[reaction.Key]; ok {
@@ -1482,9 +1487,47 @@ func (portal *Portal) HandleEmojiMessage(source *User, message skype.Resource) {
 					Key:     emoji,
 				}
 				content.SetRelatesTo(inRelateTo)
-
 				portal.trySendMessage(intent, event.EventReaction, content, source, message)
+
+				if _, ok := current_reactions[user.Value] ; !ok {
+					// New reaction
+					content := &event.MessageEventContent{ }
+					inRelateTo := &event.RelatesTo{
+						Type:    event.RelAnnotation,
+						EventID: msg.MXID,
+						Key:     emoji,
+					}
+					content.SetRelatesTo(inRelateTo)
+
+					resp, err := portal.trySendMessage(intent, event.EventReaction, content, source, message)
+					if err == nil {
+						r := portal.bridge.DB.Reaction.New()
+						r.ID = user.Value
+						r.MID = message.Id
+						r.Chat = portal.Key
+						r.MXID = resp.EventID
+						r.Timestamp = user.Time
+						r.Content = emoji
+						r.Sender = user.Mri
+						r.Insert()
+					} else {
+						fmt.Println("portal HandleEmojiMessage1:", err)
+					}
+				} else {
+					// Remove from list, not database
+					delete(current_reactions, user.Value)
+				}
 			}
+		}
+	}
+
+	for _, r := range current_reactions {
+		intent := portal.bridge.GetPuppetByJID(r.Sender).IntentFor(portal)
+		_, err := intent.RedactEvent(portal.MXID, r.MXID)
+		if err == nil {
+			r.Delete()
+		} else {
+			fmt.Println("portal HandleEmojiMessage1:", err)
 		}
 	}
 }
