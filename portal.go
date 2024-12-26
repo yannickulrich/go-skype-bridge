@@ -1464,17 +1464,17 @@ func (portal *Portal) sendMessage(intent *appservice.IntentAPI, eventType event.
 func (portal *Portal) HandleEmojiMessage(source *User, message skype.Resource) {
 	fmt.Println("portal HandleEmojiMessage")
 
-	intent := portal.getMessageIntentSkype(source, message)
-	if intent == nil {
-		fmt.Println("portal HandleEmojiMessage0: ", intent)
-		return
-	}
-
 	msg := source.bridge.DB.Message.GetByID(message.Id)
 	for _, reaction := range message.Properties.Emotions {
 		// translate emoji
 		if emoji, ok := emojimap[reaction.Key]; ok {
 			for _, user := range reaction.Users {
+				intent := portal.bridge.GetPuppetByJID(user.Mri + skypeExt.NewUserSuffix).IntentFor(portal)
+				if intent == nil {
+					fmt.Println("portal HandleEmojiMessage0: ", intent)
+					continue
+				}
+
 				content := &event.MessageEventContent{ }
 				inRelateTo := &event.RelatesTo{
 					Type:    event.RelAnnotation,
