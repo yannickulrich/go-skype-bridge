@@ -109,6 +109,10 @@ func Migrate(old *Database, new *Database) {
 	if err != nil {
 		panic(err)
 	}
+	err = migrateTable(old, new, "reactions", "chat_jid", "chat_receiver", "message_id", "mxid", "sender", "content", "timestamp")
+	if err != nil {
+		panic(err)
+	}
 	err = migrateTable(old, new, "mx_registrations", "user_id")
 	if err != nil {
 		panic(err)

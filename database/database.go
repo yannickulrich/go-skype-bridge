@@ -36,6 +36,7 @@ type Database struct {
 	Portal  *PortalQuery
 	Puppet  *PuppetQuery
 	Message *MessageQuery
+	Reaction*ReactionQuery
 }
 
 func New(dbType string, uri string) (*Database, error) {
@@ -68,6 +69,10 @@ func New(dbType string, uri string) (*Database, error) {
 	db.Message = &MessageQuery{
 		db:  db,
 		log: db.log.Sub("Message"),
+	}
+	db.Reaction = &ReactionQuery{
+		db:  db,
+		log: db.log.Sub("Reaction"),
 	}
 	return db, nil
 }

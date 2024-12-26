@@ -5,3 +5,5 @@ type SkypeID = string
 
 // SkypeMessageID is the internal Client Message ID of a skype message.
 type SkypeMessageID = string
+
+type SkypeReactionID = string
